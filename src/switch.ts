@@ -4,7 +4,7 @@
  * `llm-pi-ai` profile providers, writes the active account's API key into DSH's
  * credential slot so the routed agent actually uses it.
  *
- * @module @tsuuanmi/dsh-account/switch
+ * @module @tsuuanmi/provider/switch
  */
 import type { Context } from "@deepseek-ai/cordis";
 import { credentialRef } from "@deepseek-ai/dsh-credentials";

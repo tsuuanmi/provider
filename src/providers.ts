@@ -10,7 +10,7 @@
  *
  * Reuses pi-ai's built-in provider factories (no reimplementation of OAuth).
  *
- * @module @tsuuanmi/dsh-account/providers
+ * @module @tsuuanmi/provider/providers
  */
 import type { Context } from "@deepseek-ai/cordis";
 import type { Provider } from "@earendil-works/pi-ai";

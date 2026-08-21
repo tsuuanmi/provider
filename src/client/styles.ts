@@ -3,7 +3,7 @@
  * (mirrors the harness client-bundle CSS convention). Kept minimal and driven
  * by the shell's design tokens so the control matches the model dropdown.
  *
- * @module @tsuuanmi/dsh-account/client/styles
+ * @module @tsuuanmi/provider/client/styles
  */
 
 const CSS = `
@@ -55,7 +55,7 @@ const CSS = `
 .acct-errText{color:var(--dsw-alias-state-error-primary);font-size:12px;line-height:18px}
 `;
 
-const TAG_ID = "@tsuuanmi/dsh-account/account.module.css";
+const TAG_ID = "@tsuuanmi/provider/account.module.css";
 let injected = false;
 
 /** Inject the dropdown stylesheet once (idempotent; no-op on repeat). */
@@ -65,7 +65,7 @@ export function injectAccountStyles(): void {
 	if (typeof document === "undefined") return;
 	if (document.querySelector(`style[data-plugin-css="${TAG_ID}"]`) !== null) return;
 	const tag = document.createElement("style");
-	tag.dataset.plugin = "@tsuuanmi/dsh-account";
+	tag.dataset.plugin = "@tsuuanmi/provider";
 	tag.dataset.pluginCss = TAG_ID;
 	tag.textContent = CSS;
 	document.head.appendChild(tag);

@@ -1,11 +1,11 @@
 /**
- * Minimal invariant and error vocabulary for dsh-account.
- * @module @tsuuanmi/dsh-account/invariant
+ * Minimal invariant and error vocabulary for provider.
+ * @module @tsuuanmi/provider/invariant
  */
 
 /** Fail loudly if a locally closed union gains an unhandled member. */
 export function assertNever(value: never): never {
-	throw new TypeError(`unknown dsh-account value: ${String(value)}`);
+	throw new TypeError(`unknown provider value: ${String(value)}`);
 }
 
 /** Stable error codes surfaced by the plugin to the account UI/RPC. */

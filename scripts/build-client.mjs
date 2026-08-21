@@ -20,7 +20,7 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const outfile = join(root, "lib", "client.js");
 
 const banner = `window.__ModuleLoader__.load({
-	id: "@tsuuanmi/dsh-account",
+	id: "@tsuuanmi/provider",
 	factory: (require) => {
 		var module = { exports: {} };
 		var exports = module.exports;

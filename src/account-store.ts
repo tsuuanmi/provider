@@ -1,5 +1,5 @@
 /**
- * Multi-account credential store for dsh-account.
+ * Multi-account credential store for provider.
  *
  * pi-ai's `CredentialStore` is one-credential-per-provider, but this plugin
  * manages many named accounts per provider with one active. This module keeps a
@@ -13,7 +13,7 @@
  * strict-versioned posture of `dsh-codex-connect`'s OAuth store. The document
  * lives at `$DSH_HOME/accounts.json`.
  *
- * @module @tsuuanmi/dsh-account/store
+ * @module @tsuuanmi/provider/store
  */
 import type { Credential, CredentialInfo, CredentialStore } from "@earendil-works/pi-ai";
 import { withFileLock, writeFileAtomic } from "@deepseek-ai/dsh-atomic-write";
@@ -58,7 +58,7 @@ async function assertOwnerOnly(filename: string): Promise<void> {
 	if ((mode & 0o77) !== 0) {
 		throw new AccountError(
 			"STORAGE",
-			`dsh-account: ${filename} is readable beyond its owner (mode ${(mode & 0o777).toString(8)}); run "chmod 600 ${filename}" before starting again`,
+			`provider: ${filename} is readable beyond its owner (mode ${(mode & 0o777).toString(8)}); run "chmod 600 ${filename}" before starting again`,
 		);
 	}
 }
@@ -75,42 +75,42 @@ function parseDocument(text: string, filename: string): AccountDocument {
 	try {
 		value = JSON.parse(text);
 	} catch {
-		throw new AccountError("STORAGE", `dsh-account: ${filename} is not valid JSON`);
+		throw new AccountError("STORAGE", `provider: ${filename} is not valid JSON`);
 	}
 	if (typeof value !== "object" || value === null || Array.isArray(value)) {
-		throw new AccountError("STORAGE", `dsh-account: ${filename} must contain an object`);
+		throw new AccountError("STORAGE", `provider: ${filename} must contain an object`);
 	}
 	const document = value as Record<string, unknown>;
 	if (document["version"] !== FORMAT_VERSION) {
 		throw new AccountError(
 			"STORAGE",
-			`dsh-account: ${filename} has unsupported accounts format version ${String(document["version"])}`,
+			`provider: ${filename} has unsupported accounts format version ${String(document["version"])}`,
 		);
 	}
 	if (Object.keys(document).some((key) => key !== "version" && key !== "providers")) {
-		throw new AccountError("STORAGE", `dsh-account: ${filename} contains an unknown top-level field`);
+		throw new AccountError("STORAGE", `provider: ${filename} contains an unknown top-level field`);
 	}
 	const providers = document["providers"];
 	if (typeof providers !== "object" || providers === null || Array.isArray(providers)) {
-		throw new AccountError("STORAGE", `dsh-account: ${filename} providers must be an object`);
+		throw new AccountError("STORAGE", `provider: ${filename} providers must be an object`);
 	}
 	for (const [providerId, raw] of Object.entries(providers as Record<string, unknown>)) {
 		if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-			throw new AccountError("STORAGE", `dsh-account: ${filename} provider "${providerId}" must be an object`);
+			throw new AccountError("STORAGE", `provider: ${filename} provider "${providerId}" must be an object`);
 		}
 		const entry = raw as Record<string, unknown>;
 		if (Object.keys(entry).some((key) => key !== "accounts" && key !== "active")) {
-			throw new AccountError("STORAGE", `dsh-account: ${filename} provider "${providerId}" has an unknown field`);
+			throw new AccountError("STORAGE", `provider: ${filename} provider "${providerId}" has an unknown field`);
 		}
 		const accounts = entry["accounts"];
 		if (typeof accounts !== "object" || accounts === null || Array.isArray(accounts)) {
-			throw new AccountError("STORAGE", `dsh-account: ${filename} provider "${providerId}" accounts must be an object`);
+			throw new AccountError("STORAGE", `provider: ${filename} provider "${providerId}" accounts must be an object`);
 		}
 		for (const [accountId, credential] of Object.entries(accounts as Record<string, unknown>)) {
 			if (!isCredential(credential)) {
 				throw new AccountError(
 					"STORAGE",
-					`dsh-account: ${filename} provider "${providerId}" account "${accountId}" has an invalid credential`,
+					`provider: ${filename} provider "${providerId}" account "${accountId}" has an invalid credential`,
 				);
 			}
 		}
@@ -118,7 +118,7 @@ function parseDocument(text: string, filename: string): AccountDocument {
 		if (active !== undefined && (typeof active !== "string" || !(active in (accounts as Record<string, unknown>)))) {
 			throw new AccountError(
 				"STORAGE",
-				`dsh-account: ${filename} provider "${providerId}" active account "${String(active)}" is not among its accounts`,
+				`provider: ${filename} provider "${providerId}" active account "${String(active)}" is not among its accounts`,
 			);
 		}
 	}
@@ -167,7 +167,7 @@ export class AccountStore {
 			text = await readFile(this.filename, "utf8");
 		} catch (error) {
 			if (isENOENT(error)) return emptyDocument();
-			throw new AccountError("STORAGE", `dsh-account: failed to read ${this.filename}`);
+			throw new AccountError("STORAGE", `provider: failed to read ${this.filename}`);
 		}
 		return parseDocument(text, this.filename);
 	}

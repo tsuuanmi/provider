@@ -1,7 +1,7 @@
 //#region src/invariant.d.ts
 /**
- * Minimal invariant and error vocabulary for dsh-account.
- * @module @tsuuanmi/dsh-account/invariant
+ * Minimal invariant and error vocabulary for provider.
+ * @module @tsuuanmi/provider/invariant
  */
 /** Fail loudly if a locally closed union gains an unhandled member. */
 declare function assertNever(value: never): never;

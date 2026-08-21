@@ -1,16 +1,16 @@
 /**
- * dsh-account browser half (client cordis plugin).
+ * provider browser half (client cordis plugin).
  *
  * Mounts the account dropdown into the composer tool row
  * (`conversation.input.right`, right of the model seat). All data and mutations
- * travel over the generic `/api` RPC channel to the host half's `dsh-account/*`
+ * travel over the generic `/api` RPC channel to the host half's `provider/*`
  * endpoints.
  *
  * Services are read through the runtime's `ctx.get(...)` (string-keyed) rather
  * than the host/native-typed `Context` augmentations, which are host-biased on
  * this build; the interfaces below are the browser faces this plugin consumes.
  *
- * @module @tsuuanmi/dsh-account/client
+ * @module @tsuuanmi/provider/client
  */
 import type { ClientContext } from "@deepseek-ai/dsh-client-runtime/client";
 import type { RpcOutcome } from "./api.ts";
@@ -45,7 +45,7 @@ export function apply(ctx: ClientContext): void {
 	const slots = get("slots") as SlotsFace;
 	const connection = get("connection") as ConnectionFace;
 	const call = <T = unknown>(endpoint: string, payload?: unknown): Promise<RpcOutcome<T>> =>
-		connection.rpc.call("/dsh-account", endpoint, payload === undefined ? {} : payload) as Promise<RpcOutcome<T>>;
+		connection.rpc.call("/provider", endpoint, payload === undefined ? {} : payload) as Promise<RpcOutcome<T>>;
 
 	locale.register(NS, { zh, en });
 	slots.inject(
@@ -54,7 +54,7 @@ export function apply(ctx: ClientContext): void {
 			slots.register(
 				{
 					name: "conversation.input.right",
-					id: "dsh-account",
+					id: "provider",
 					order: 90,
 					locale: NS,
 					inject: () => ({ call }),

@@ -1,4 +1,4 @@
-# @tsuuanmi/dsh-account
+# @tsuuanmi/provider
 
 A [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) plugin for
 managing multiple named provider accounts from the web UI.
@@ -49,13 +49,13 @@ llm-pi-ai:
 Install the published package into a DSH profile:
 
 ```sh
-dsh plugin --profile <profile> add @tsuuanmi/dsh-account
+dsh plugin --profile <profile> add @tsuuanmi/provider
 ```
 
 Or install a linked local checkout:
 
 ```sh
-dsh plugin --profile <profile> add /path/to/dsh-account
+dsh plugin --profile <profile> add /path/to/provider
 ```
 
 Restart the profile after installation:
@@ -103,7 +103,7 @@ This is a dual-face DSH plugin:
   switching, and OAuth provider routing.
 - **Browser** (`lib/client.js`): renders the Account dropdown and dialog in the
   `conversation.input.right` composer slot.
-- **RPC**: uses the dedicated `/dsh-account` logical connection channel with
+- **RPC**: uses the dedicated `/provider` logical connection channel with
   `list`, `switch`, `remove`, `add-start`, and `add-complete` endpoints.
 
 The implementation reuses existing DSH and pi-ai services:

@@ -6,7 +6,7 @@
  * running agent uses whichever account is marked active. Reuses
  * `PiAiAdapter` and `Models.getAuth` from the DSH/pi-ai stack.
  *
- * @module @tsuuanmi/dsh-account/adapter
+ * @module @tsuuanmi/provider/adapter
  */
 import type { Context } from "@deepseek-ai/cordis";
 import { createModels } from "@earendil-works/pi-ai";
@@ -49,7 +49,7 @@ export function buildOAuthAdapter(
 				provider: provider.id,
 				displayName: name,
 				streamIdleTimeoutMs: STREAM_IDLE_TIMEOUT_MS,
-				retryPolicy: resolveRetryPolicy(undefined, `dsh-account ${provider.id} retryPolicy`),
+				retryPolicy: resolveRetryPolicy(undefined, `provider ${provider.id} retryPolicy`),
 				configuredMaxTokens: new Map<string, number>(),
 				piProvider,
 			},
@@ -71,7 +71,7 @@ export function registerOAuthProviders(ctx: Context, store: AccountStore): numbe
 	let registered = 0;
 	for (const managed of OAUTH_PROVIDERS) {
 		if (existing.has(managed.id)) {
-			ctx.logger.warn('dsh-account: provider "%s" is already routed by another adapter; skipping registration', managed.id);
+			ctx.logger.warn('provider: provider "%s" is already routed by another adapter; skipping registration', managed.id);
 			continue;
 		}
 		try {
@@ -79,7 +79,7 @@ export function registerOAuthProviders(ctx: Context, store: AccountStore): numbe
 			ctx.llm.registerAdapter([managed.id], adapter);
 			registered += 1;
 		} catch (error) {
-			ctx.logger.warn('dsh-account: failed to register provider "%s": %s', managed.id, String(error));
+			ctx.logger.warn('provider: failed to register provider "%s": %s', managed.id, String(error));
 		}
 	}
 	return registered;

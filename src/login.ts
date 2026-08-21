@@ -10,7 +10,7 @@
  *
  * Reuses pi-ai's `Models.login` and its `AuthInteraction` contract.
  *
- * @module @tsuuanmi/dsh-account/login
+ * @module @tsuuanmi/provider/login
  */
 import { createModels } from "@earendil-works/pi-ai";
 import type { AuthEvent, AuthInteraction, AuthPrompt, Credential, Provider } from "@earendil-works/pi-ai";

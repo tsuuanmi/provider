@@ -1,14 +1,14 @@
 /**
  * Account RPC service for the GUI dropdown.
  *
- * Registers a dedicated logical RPC channel (`/dsh-account`) on the host
+ * Registers a dedicated logical RPC channel (`/provider`) on the host
  * connection. The client plugin (browser half) calls these through
- * `ctx.connection.rpc.call("/dsh-account", endpoint, payload)`; each handler
+ * `ctx.connection.rpc.call("/provider", endpoint, payload)`; each handler
  * returns an `RpcResult` and never throws. Reuses the plugin's multi-account
  * store, the shared switch helper, and the OAuth login controller + code
  * registry.
  *
- * @module @tsuuanmi/dsh-account/rpc
+ * @module @tsuuanmi/provider/rpc
  */
 import { randomUUID } from "node:crypto";
 import type { Context } from "@deepseek-ai/cordis";
@@ -38,12 +38,12 @@ export interface ProviderView {
 	accounts: AccountView[];
 }
 
-/** `dsh-account/list` result. */
+/** `provider/list` result. */
 export interface AccountListResult {
 	providers: ProviderView[];
 }
 
-/** `dsh-account/add-start` result for an OAuth provider. */
+/** `provider/add-start` result for an OAuth provider. */
 export interface OAuthStartResult {
 	kind: "oauth";
 	url: string;
@@ -52,7 +52,7 @@ export interface OAuthStartResult {
 	accountId: string;
 }
 
-/** `dsh-account/add-start` result for an api-key provider. */
+/** `provider/add-start` result for an api-key provider. */
 export interface AddedResult {
 	kind: "added";
 	providerId: string;
@@ -76,7 +76,7 @@ interface AccountRefPayload {
 
 function requireStr(value: unknown, name: string): string {
 	if (typeof value === "string" && value.length > 0) return value;
-	throw new AccountError("UNKNOWN_ACCOUNT", `dsh-account: missing required string field "${name}"`);
+	throw new AccountError("UNKNOWN_ACCOUNT", `provider: missing required string field "${name}"`);
 }
 
 function errText(error: unknown): string {
@@ -130,7 +130,7 @@ async function startOAuth(
 		.then(async () => {
 			if (!(await store.getActive(providerId))) await store.setActive(providerId, accountId);
 		})
-		.catch((error) => ctx.logger.warn('dsh-account: login for "%s" failed: %s', accountId, errText(error)));
+		.catch((error) => ctx.logger.warn('provider: login for "%s" failed: %s', accountId, errText(error)));
 	return { kind: "oauth", url: authUrlFromEvent(event), token, providerId, accountId };
 }
 
@@ -211,5 +211,5 @@ export function registerAccountRpc(
 			return { ok: false, error: fold(error) } satisfies RpcResult<unknown>;
 		}
 	};
-	return ctx.connection.rpc.handle("/dsh-account", handler, { authority: "loopback" });
+	return ctx.connection.rpc.handle("/provider", handler, { authority: "loopback" });
 }

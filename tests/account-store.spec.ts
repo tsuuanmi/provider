@@ -9,7 +9,7 @@ import { CodeRegistry } from "../src/login.ts";
 let dirs: string[] = [];
 
 async function makeStore(): Promise<AccountStore> {
-	const dir = await mkdtemp(join(tmpdir(), "dsh-account-"));
+	const dir = await mkdtemp(join(tmpdir(), "provider-"));
 	dirs.push(dir);
 	return new AccountStore(join(dir, "accounts.json"));
 }

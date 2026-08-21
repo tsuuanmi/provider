@@ -1,5 +1,5 @@
 /**
- * Unit tests for the `dsh-account/*` RPC handlers. A fake host context captures
+ * Unit tests for the `provider/*` RPC handlers. A fake host context captures
  * the `/api` interceptor; the OAuth start path (network) is exercised
  * separately and is out of scope here. The api-key add, switch, remove, list,
  * and error-folding paths are covered against a temp account store.
@@ -22,7 +22,7 @@ afterEach(async () => {
 });
 
 function makeHarness() {
-	const dir = join(tmpdir(), `dsh-account-rpc-${Math.random().toString(36).slice(2)}`);
+	const dir = join(tmpdir(), `provider-rpc-${Math.random().toString(36).slice(2)}`);
 	dirs.push(dir);
 	const store = new AccountStore(join(dir, "accounts.json"));
 	const registry = new CodeRegistry();

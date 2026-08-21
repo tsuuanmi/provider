@@ -3,7 +3,7 @@
  * immediately; for OAuth providers drives the login (shows the URL, then either
  * polls until the account appears or finishes with a pasted redirect code).
  *
- * @module @tsuuanmi/dsh-account/client/AddAccountDialog
+ * @module @tsuuanmi/provider/client/AddAccountDialog
  */
 import { useEffect, useMemo, useState } from "react";
 import {

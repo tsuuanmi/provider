@@ -1,6 +1,6 @@
-# dsh-account: GUI multi-account management dropdown.
+# provider: GUI multi-account management dropdown.
 # Installs the plugin without changing the profile's default model or routes.
 - insert:
-    - id: dsh-account
-      name: '@tsuuanmi/dsh-account'
+    - id: provider
+      name: '@tsuuanmi/provider'
       config: {}

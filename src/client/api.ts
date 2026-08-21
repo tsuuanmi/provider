@@ -2,7 +2,7 @@
  * Client-side account API types + unwrap helper shared by the dropdown and
  * dialog components. Shapes mirror the server RPC results in `src/account-rpc.ts`.
  *
- * @module @tsuuanmi/dsh-account/client/api
+ * @module @tsuuanmi/provider/client/api
  */
 
 /** Structural mirror of the generic RPC result (avoids a host-only import). */

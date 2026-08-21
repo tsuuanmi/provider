@@ -3,9 +3,9 @@
  * mirroring the model dropdown's trigger + menu pattern. Lists accounts grouped
  * by provider with the active one checked; one click switches the active
  * account. "Add account" opens the add dialog; each account row has a remove
- * action. Reads/writes through the `dsh-account/*` RPC endpoints.
+ * action. Reads/writes through the `provider/*` RPC endpoints.
  *
- * @module @tsuuanmi/dsh-account/client/AccountSelect
+ * @module @tsuuanmi/provider/client/AccountSelect
  */
 import { useEffect, useRef, useState } from "react";
 import { type AccountListResult, type AccountRpc, type ProviderView, type RpcOutcome, unwrap } from "./api.ts";

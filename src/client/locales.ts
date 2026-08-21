@@ -1,7 +1,7 @@
 /**
  * Account dropdown copy. The English dictionary is the key-set source of truth.
  *
- * @module @tsuuanmi/dsh-account/client/locales
+ * @module @tsuuanmi/provider/client/locales
  */
 export const NS = "account";
 
