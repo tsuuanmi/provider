@@ -1,0 +1,6 @@
+# dsh-account: GUI multi-account management dropdown.
+# Installs the plugin without changing the profile's default model or routes.
+- insert:
+    - id: dsh-account
+      name: '@tsuuanmi/dsh-account'
+      config: {}

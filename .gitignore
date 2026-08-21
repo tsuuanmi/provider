@@ -1,0 +1,8 @@
+node_modules/
+coverage/
+*.log
+.DS_Store
+
+# Local account data must never be committed.
+.dsh-account.json
+accounts.json
