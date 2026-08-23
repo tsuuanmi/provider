@@ -83,6 +83,33 @@ describe("account RPC", () => {
 		expect(credentialsSet).toHaveBeenCalled();
 	});
 
+	it("mirrors the active Codex OAuth credential for dsh-codex-subscription", async () => {
+		const { store, handler, credentialsSet } = makeHarness();
+		const credential = {
+			type: "oauth" as const,
+			access: "access-two",
+			refresh: "refresh-two",
+			expires: 2_000_000_000_000,
+			accountId: "codex-account-two",
+		};
+		await store.addAccount("openai-codex", "one", {
+			type: "oauth",
+			access: "access-one",
+			refresh: "refresh-one",
+			expires: 1_900_000_000_000,
+		});
+		await store.addAccount("openai-codex", "two", credential);
+
+		const result = await handler(
+			"switch",
+			{ providerId: "openai-codex", accountId: "two" },
+			new AbortController().signal,
+		);
+		expect(result.ok).toBe(true);
+		expect(await store.getActive("openai-codex")).toBe("two");
+		expect(credentialsSet).toHaveBeenCalledWith("OPENAI_CODEX_SUBSCRIPTION_OAUTH", JSON.stringify(credential));
+	});
+
 	it("folds an unknown account into an ok:false result instead of throwing", async () => {
 		const { store, handler } = makeHarness();
 		await store.addAccount("openai-codex", "a1", { type: "api_key", key: "k" });

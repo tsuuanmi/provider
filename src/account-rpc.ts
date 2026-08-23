@@ -128,7 +128,7 @@ async function startOAuth(
 	// later add-complete code) finishes the login.
 	handle.done
 		.then(async () => {
-			if (!(await store.getActive(providerId))) await store.setActive(providerId, accountId);
+			if (!(await store.getActive(providerId))) await switchActiveAccount(ctx, store, providerId, accountId);
 		})
 		.catch((error) => ctx.logger.warn('provider: login for "%s" failed: %s', accountId, errText(error)));
 	return { kind: "oauth", url: authUrlFromEvent(event), token, providerId, accountId };

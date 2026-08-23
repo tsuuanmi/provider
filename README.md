@@ -12,6 +12,7 @@ normal Harness model dropdown.
 - Fixed **Account** composer toggle.
 - List accounts grouped by provider.
 - Switch the active account instantly.
+- Keep `dsh-codex-subscription` synchronized with the active OpenAI Codex account.
 - Add multiple accounts for the same provider.
 - Add OpenAI Codex accounts through pi-ai OAuth.
 - Add API-key provider accounts through the UI.
@@ -80,6 +81,10 @@ DSH home directory. The document contains provider accounts, credentials, and
 one active account per provider. The plugin reads only this filename; older
 filenames are not used.
 
+When an OpenAI Codex account becomes active, its OAuth credential is serialized
+into `$DSH_HOME/.credentials.yaml` as `OPENAI_CODEX_SUBSCRIPTION_OAUTH`. The
+`dsh-codex-subscription` plugin reads that credential and owns the Codex route.
+
 ## Default model
 
 Account management and model selection are separate. Configure the default
@@ -92,15 +97,16 @@ agent-default-model:
   model: deepseek-v4-flash:0731
 ```
 
-OpenAI Codex models remain available in the normal model dropdown whenever the
-Codex provider is routed by the active profile.
+OpenAI Codex models remain available in the normal model dropdown through
+`dsh-codex-subscription`. This plugin does not register an `openai-codex`
+adapter, so both plugins can load without a duplicate-provider conflict.
 
 ## Architecture
 
 This is a dual-face DSH plugin:
 
 - **Host** (`lib/index.js`): owns account storage, OAuth login, active-account
-  switching, and OAuth provider routing.
+  switching, and synchronization with `dsh-codex-subscription`.
 - **Browser** (`lib/client.js`): renders the Account dropdown and dialog in the
   `conversation.input.right` composer slot.
 - **RPC**: uses the dedicated `/provider` logical connection channel with
@@ -112,7 +118,7 @@ The implementation reuses existing DSH and pi-ai services:
 - `@deepseek-ai/dsh-credentials` for profile API-key credentials
 - `@deepseek-ai/dsh-settings` for provider configuration
 - `@deepseek-ai/dsh-atomic-write` for locked atomic persistence
-- `@deepseek-ai/dsh-llm-pi-ai` for managed provider routes
+- `dsh-codex-subscription` for the OpenAI Codex provider route
 - DSH client runtime, locale, connection, and slot services for the UI
 
 No slash command is registered by this plugin.
