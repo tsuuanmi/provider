@@ -47,12 +47,28 @@ describe("AccountStore", () => {
 		expect(await reload.listProviders()).toEqual(["openai-codex"]);
 	});
 
-	it("rejects duplicate accounts and active removal", async () => {
+	it("rejects duplicate accounts and clears active on removal", async () => {
 		const store = await makeStore();
 		await store.addAccount("openai-codex", "a1", oauth);
+		await store.addAccount("openai-codex", "a2", oauth);
 		await store.setActive("openai-codex", "a1");
 		await expect(store.addAccount("openai-codex", "a1", oauth)).rejects.toMatchObject({ code: "DUPLICATE_ACCOUNT" });
-		await expect(store.removeAccount("openai-codex", "a1")).rejects.toMatchObject({ code: "ACTIVE_ACCOUNT" });
+
+		// Removing a non-active account leaves the active marker untouched.
+		expect(await store.removeAccount("openai-codex", "a2")).toBe(false);
+		expect(await store.getActive("openai-codex")).toBe("a1");
+		expect(await store.hasAccount("openai-codex", "a2")).toBe(false);
+
+		// Removing the active account clears the marker and reports it.
+		expect(await store.removeAccount("openai-codex", "a1")).toBe(true);
+		expect(await store.getActive("openai-codex")).toBe(undefined);
+		expect(await store.listProviders()).toEqual([]);
+	});
+
+	it("rejects removing an unknown account", async () => {
+		const store = await makeStore();
+		await store.addAccount("openai-codex", "a1", oauth);
+		await expect(store.removeAccount("openai-codex", "missing")).rejects.toMatchObject({ code: "UNKNOWN_ACCOUNT" });
 	});
 
 	it("fails loud on a corrupt document", async () => {

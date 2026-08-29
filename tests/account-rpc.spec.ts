@@ -28,6 +28,7 @@ function makeHarness() {
 	const registry = new CodeRegistry();
 	let captured: RpcHandler | undefined;
 	const credentialsSet = vi.fn();
+	const credentialsUnset = vi.fn();
 	const ctx = {
 		settings: {
 			get: () => ({
@@ -36,7 +37,7 @@ function makeHarness() {
 				},
 			}),
 		},
-		credentials: { set: credentialsSet },
+		credentials: { set: credentialsSet, unset: credentialsUnset },
 		connection: {
 			rpc: {
 				handle: (_channel: string, handler: RpcHandler) => {
@@ -49,7 +50,7 @@ function makeHarness() {
 	} as unknown as Context;
 	registerAccountRpc(ctx, store, registry);
 	if (!captured) throw new Error("rpc handler not captured");
-	return { store, ctx, handler: captured, credentialsSet };
+	return { store, ctx, handler: captured, credentialsSet, credentialsUnset };
 }
 
 describe("account RPC", () => {
@@ -135,12 +136,13 @@ describe("account RPC", () => {
 		expect(await store.getActive("profile-key")).toBe("new1");
 	});
 
-	it("removes a non-active account but refuses the active one", async () => {
-		const { store, handler } = makeHarness();
+	it("removes a non-active account and tears down the active one's credential", async () => {
+		const { store, handler, credentialsUnset } = makeHarness();
 		await store.addAccount("openai-codex", "a1", { type: "api_key", key: "k" });
 		await store.addAccount("openai-codex", "a2", { type: "api_key", key: "k2" });
 		await store.setActive("openai-codex", "a1");
 
+		// Removing a non-active account does not touch credentials.
 		const ok = (await handler(
 			"remove",
 			{ providerId: "openai-codex", accountId: "a2" },
@@ -148,14 +150,18 @@ describe("account RPC", () => {
 		)) as { ok: true };
 		expect(ok.ok).toBe(true);
 		expect(await store.hasAccount("openai-codex", "a2")).toBe(false);
+		expect(credentialsUnset).not.toHaveBeenCalled();
 
-		const refused = (await handler(
+		// Removing the active account clears the marker and unsets the Codex slot.
+		const removed = (await handler(
 			"remove",
 			{ providerId: "openai-codex", accountId: "a1" },
 			new AbortController().signal,
-		)) as { ok: false; error: { message: string } };
-		expect(refused.ok).toBe(false);
-		expect(refused.error.message).toMatch(/active/i);
+		)) as { ok: true };
+		expect(removed.ok).toBe(true);
+		expect(await store.hasAccount("openai-codex", "a1")).toBe(false);
+		expect(await store.getActive("openai-codex")).toBe(undefined);
+		expect(credentialsUnset).toHaveBeenCalledWith("OPENAI_CODEX_SUBSCRIPTION_OAUTH");
 	});
 
 	it("add-complete rejects an unknown token as a folded error", async () => {

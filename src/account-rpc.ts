@@ -19,7 +19,7 @@ import { AccountStore, type AccountInfo } from "./account-store.ts";
 import { AccountError } from "./invariant.ts";
 import { CodeRegistry, authUrlFromEvent, startOAuthLogin, waitForLoginEvent } from "./login.ts";
 import { buildInventory, findAccountProvider, findOAuthProvider, type AccountProviderInfo } from "./providers.ts";
-import { switchActiveAccount } from "./switch.ts";
+import { switchActiveAccount, clearActiveAccountCredential } from "./switch.ts";
 
 /** One account rendered for the dropdown. */
 export interface AccountView {
@@ -190,7 +190,8 @@ export function registerAccountRpc(
 					const ref = payload as AccountRefPayload;
 					const providerId = requireStr(ref?.providerId, "providerId");
 					const accountId = requireStr(ref?.accountId, "accountId");
-					await store.removeAccount(providerId, accountId);
+					const wasActive = await store.removeAccount(providerId, accountId);
+					if (wasActive) await clearActiveAccountCredential(ctx, providerId);
 					value = { removed: accountId };
 					break;
 				}

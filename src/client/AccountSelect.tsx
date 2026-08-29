@@ -189,7 +189,7 @@ export function AccountSelect({ call, t }: AccountSelectProps) {
 												className="acct-removeBtn"
 												aria-label={t("action.remove")}
 												title={t("action.remove")}
-												disabled={busy || account.active}
+												disabled={busy}
 												onClick={() => setRemove({ providerId: provider.id, accountId: account.accountId })}
 											>
 												<TrashIcon />

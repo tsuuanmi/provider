@@ -17,7 +17,7 @@ normal Harness model dropdown.
 - Add OpenAI Codex accounts through pi-ai OAuth.
 - Add API-key provider accounts through the UI.
 - Open OAuth URLs in a new tab or copy them directly.
-- Remove inactive accounts.
+- Remove accounts (including the active one).
 - Store account credentials in an owner-only JSON file.
 
 ## Supported providers
@@ -84,6 +84,12 @@ filenames are not used.
 When an OpenAI Codex account becomes active, its OAuth credential is serialized
 into `$DSH_HOME/.credentials.yaml` as `OPENAI_CODEX_SUBSCRIPTION_OAUTH`. The
 `dsh-codex-subscription` plugin reads that credential and owns the Codex route.
+
+Removing the active account clears that provider's active marker (no other
+account is silently promoted) and tears down its mirrored credential, so a
+removed account's OAuth grant or API key is not left behind for another plugin
+to keep using. Switch to another account first if you want to keep the route
+live.
 
 ## Default model
 

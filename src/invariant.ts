@@ -13,7 +13,6 @@ export type AccountErrorCode =
 	| "UNKNOWN_PROVIDER"
 	| "UNKNOWN_ACCOUNT"
 	| "DUPLICATE_ACCOUNT"
-	| "ACTIVE_ACCOUNT"
 	| "NO_OAUTH"
 	| "NO_API_KEY"
 	| "STORAGE"

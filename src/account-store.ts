@@ -254,20 +254,26 @@ export class AccountStore {
 		});
 	}
 
-	/** Remove one named account. Refuses removing the active account. */
-	async removeAccount(providerId: string, accountId: string): Promise<void> {
+	/**
+	 * Remove one named account. When the removed account was the provider's
+	 * active account, the active marker is cleared (no account is silently
+	 * promoted). Returns whether the removed account had been active, so callers
+	 * can tear down its mirrored credential (e.g. the Codex subscription slot).
+	 */
+	async removeAccount(providerId: string, accountId: string): Promise<boolean> {
+		let wasActive = false;
 		await this.mutate((doc) => {
 			const entry = doc.providers[providerId];
 			if (!entry || entry.accounts[accountId] === undefined) {
 				throw new AccountError("UNKNOWN_ACCOUNT", `No account "${accountId}" for ${providerId}`);
 			}
-			if (entry.active === accountId) {
-				throw new AccountError("ACTIVE_ACCOUNT", `Account "${accountId}" is active for ${providerId}; switch first`);
-			}
+			wasActive = entry.active === accountId;
 			delete entry.accounts[accountId];
+			if (wasActive) delete entry.active;
 			if (Object.keys(entry.accounts).length === 0) delete doc.providers[providerId];
 			return doc;
 		});
+		return wasActive;
 	}
 }
 

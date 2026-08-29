@@ -33,3 +33,20 @@ export async function switchActiveAccount(
 		await ctx.credentials.set(CODEX_SUBSCRIPTION_OAUTH_REF, JSON.stringify(credential));
 	}
 }
+
+/**
+ * Tear down the active account's mirrored credential for a provider, used after
+ * removing the active account so no stale credential (e.g. the Codex
+ * subscription OAuth grant) is left behind for another plugin to keep using.
+ * Removing an absent reference is a no-op in the credentials seam.
+ */
+export async function clearActiveAccountCredential(ctx: Context, providerId: string): Promise<void> {
+	const info = findAccountProvider(buildInventory(ctx), providerId);
+	if (!info) return;
+	if (info.kind === "profile" && info.apiKeyEnv !== undefined) {
+		await ctx.credentials.unset(credentialRef(info.apiKeyEnv));
+	}
+	if (providerId === CODEX_PROVIDER_ID) {
+		await ctx.credentials.unset(CODEX_SUBSCRIPTION_OAUTH_REF);
+	}
+}
