@@ -192,15 +192,17 @@ export class AccountStore {
 		return Object.keys((await this.readDocument()).providers);
 	}
 
-	/** All named accounts for one provider, in insertion order. */
+	/** All named accounts for one provider, ordered alphabetically by account id. */
 	async listAccounts(providerId: string): Promise<AccountInfo[]> {
 		const providers = (await this.readDocument()).providers;
 		const entry = providers[providerId];
 		if (!entry) return [];
-		return Object.entries(entry.accounts).map(([accountId, credential]) => {
-			const base = { providerId, accountId, type: credential.type as Credential["type"] };
-			return credential.type === "oauth" ? { ...base, expires: credential.expires } : base;
-		});
+		return Object.entries(entry.accounts)
+			.map(([accountId, credential]) => {
+				const base = { providerId, accountId, type: credential.type as Credential["type"] };
+				return credential.type === "oauth" ? { ...base, expires: credential.expires } : base;
+			})
+			.sort((left, right) => left.accountId.localeCompare(right.accountId, "en"));
 	}
 
 	/** The active account id for one provider, if any. */

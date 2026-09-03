@@ -37,6 +37,18 @@ describe("AccountStore", () => {
 		expect(await store.getActive("openai-codex")).toBe("a2");
 	});
 
+	it("lists account identifiers alphabetically regardless of insertion order", async () => {
+		const store = await makeStore();
+		await store.addAccount("openai-codex", "zeta", oauth);
+		await store.addAccount("openai-codex", "Alpha", oauth);
+		await store.addAccount("openai-codex", "beta", oauth);
+		await store.setActive("openai-codex", "beta");
+
+		const accounts = await store.listAccounts("openai-codex");
+		expect(accounts.map((account) => account.accountId)).toEqual(["Alpha", "beta", "zeta"]);
+		expect(await store.getActive("openai-codex")).toBe("beta");
+	});
+
 	it("persists across instances", async () => {
 		const store = await makeStore();
 		await store.addAccount("openai-codex", "a1", oauth);
