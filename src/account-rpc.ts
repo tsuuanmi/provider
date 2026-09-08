@@ -16,10 +16,11 @@ import type { ConnectionRpcHandler } from "@deepseek-ai/dsh-client-connection";
 import type { RpcError, RpcResult } from "@deepseek-ai/dsh-host-apiproxy";
 import { credentialRef } from "@deepseek-ai/dsh-credentials";
 import { AccountStore, type AccountInfo } from "./account-store.ts";
+import { removeCodexSubscriptionAccount, syncCodexSubscriptionAccount } from "./codex-subscription.ts";
 import { AccountError } from "./invariant.ts";
 import { CodeRegistry, authUrlFromEvent, startOAuthLogin, waitForLoginEvent } from "./login.ts";
 import { buildInventory, findAccountProvider, findOAuthProvider, type AccountProviderInfo } from "./providers.ts";
-import { switchActiveAccount, clearActiveAccountCredential } from "./switch.ts";
+import { CODEX_PROVIDER_ID, clearActiveAccountCredential, switchActiveAccount } from "./switch.ts";
 
 /** One account rendered for the dropdown. */
 export interface AccountView {
@@ -190,8 +191,23 @@ export function registerAccountRpc(
 					const ref = payload as AccountRefPayload;
 					const providerId = requireStr(ref?.providerId, "providerId");
 					const accountId = requireStr(ref?.accountId, "accountId");
+					const credential = await store.getCredential(providerId, accountId); // before removal
 					const wasActive = await store.removeAccount(providerId, accountId);
 					if (wasActive) await clearActiveAccountCredential(ctx, providerId);
+					if (providerId === CODEX_PROVIDER_ID && credential?.type === "oauth") {
+						// The removed account's grant must not survive in the
+						// Codex subscription vault the running route reads from.
+						await removeCodexSubscriptionAccount(ctx, credential);
+						const active = await store.getActive(providerId);
+						if (active !== undefined) {
+							// The provider still has an active account: keep the
+							// vault's active account pinned to it.
+							const activeCredential = await store.getCredential(providerId, active);
+							if (activeCredential?.type === "oauth") {
+								await syncCodexSubscriptionAccount(ctx, activeCredential, active);
+							}
+						}
+					}
 					value = { removed: accountId };
 					break;
 				}

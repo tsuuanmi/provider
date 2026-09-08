@@ -2,7 +2,7 @@
 	"name": "@tsuuanmi/provider",
 	"displayName": "Account",
 	"description": "Multi-account provider management for DeepSeek Harness: a GUI dropdown to switch active accounts, plus OAuth/API-key add and remove.",
-	"version": "0.1.0-alpha.2",
+	"version": "0.1.0-alpha.3",
 	"type": "module",
 	"license": "Apache-2.0",
 	"repository": {

@@ -29,6 +29,7 @@ function makeHarness() {
 	let captured: RpcHandler | undefined;
 	const credentialsSet = vi.fn();
 	const credentialsUnset = vi.fn();
+	const records: Record<string, { kind: string; payload: unknown }> = {};
 	const ctx = {
 		settings: {
 			get: () => ({
@@ -37,7 +38,24 @@ function makeHarness() {
 				},
 			}),
 		},
-		credentials: { set: credentialsSet, unset: credentialsUnset },
+		credentials: {
+			set: credentialsSet,
+			unset: credentialsUnset,
+			readRecord: (key: string) => Promise.resolve(records[key]),
+			modifyRecord: (
+				key: string,
+				mutate: (current: { kind: string; payload: unknown } | undefined) => Promise<{ kind: string; payload: unknown } | undefined>,
+			) =>
+				(async () => {
+					const next = await mutate(records[key]);
+					if (next !== undefined) records[key] = next;
+					return next;
+				})(),
+			deleteRecord: (key: string) => {
+				delete records[key];
+				return Promise.resolve();
+			},
+		},
 		connection: {
 			rpc: {
 				handle: (_channel: string, handler: RpcHandler) => {
@@ -50,7 +68,7 @@ function makeHarness() {
 	} as unknown as Context;
 	registerAccountRpc(ctx, store, registry);
 	if (!captured) throw new Error("rpc handler not captured");
-	return { store, ctx, handler: captured, credentialsSet, credentialsUnset };
+	return { store, ctx, handler: captured, credentialsSet, credentialsUnset, records };
 }
 
 describe("account RPC", () => {
@@ -85,7 +103,7 @@ describe("account RPC", () => {
 	});
 
 	it("mirrors the active Codex OAuth credential for dsh-codex-subscription", async () => {
-		const { store, handler, credentialsSet } = makeHarness();
+		const { store, handler, credentialsSet, records } = makeHarness();
 		const credential = {
 			type: "oauth" as const,
 			access: "access-two",
@@ -109,6 +127,38 @@ describe("account RPC", () => {
 		expect(result.ok).toBe(true);
 		expect(await store.getActive("openai-codex")).toBe("two");
 		expect(credentialsSet).toHaveBeenCalledWith("OPENAI_CODEX_SUBSCRIPTION_OAUTH", JSON.stringify(credential));
+
+		// The 1.13+ vault record the running route reads from switches too.
+		const vaultRecord = records["codex-subscription/accounts"] as
+			| { kind: string; payload: { activeId: string; accounts: { id: string; label: string; credential: Record<string, unknown> }[] } }
+			| undefined;
+		expect(vaultRecord).toBeDefined();
+		const vault = vaultRecord!.payload;
+		expect(vault.accounts).toHaveLength(1);
+		expect(vault.accounts[0]!.label).toBe("two");
+		expect(vault.accounts[0]!.credential.access).toBe("access-two");
+		expect(vault.activeId).toBe(vault.accounts[0]!.id);
+	});
+
+	it("tears the switched Codex account out of the codex-subscription vault on removal", async () => {
+		const { store, handler, records } = makeHarness();
+		const one = { type: "oauth" as const, access: "access-one", refresh: "refresh-one", expires: 1_900_000_000_000 };
+		const two = { type: "oauth" as const, access: "access-two", refresh: "refresh-two", expires: 2_000_000_000_000, accountId: "codex-account-two" };
+		await store.addAccount("openai-codex", "one", one);
+		await store.addAccount("openai-codex", "two", two);
+		await handler("switch", { providerId: "openai-codex", accountId: "two" }, new AbortController().signal);
+		expect(records["codex-subscription/accounts"]).toBeDefined();
+
+		// Removing the non-active account leaves the vault pinned to the active one.
+		await handler("remove", { providerId: "openai-codex", accountId: "one" }, new AbortController().signal);
+		const kept = (records["codex-subscription/accounts"] as { payload: { activeId: string; accounts: { label: string }[] } }).payload;
+		expect(kept.accounts).toHaveLength(1);
+		expect(kept.accounts[0]!.label).toBe("two");
+
+		// Removing the active Codex account removes its vault entry entirely
+		// (it was the last one, so the record is deleted, not left empty).
+		await handler("remove", { providerId: "openai-codex", accountId: "two" }, new AbortController().signal);
+		expect(records["codex-subscription/accounts"]).toBeUndefined();
 	});
 
 	it("folds an unknown account into an ok:false result instead of throwing", async () => {

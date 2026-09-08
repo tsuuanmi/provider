@@ -2,11 +2,13 @@
  * provider — pi-style multi-account provider management for DSH.
  *
  * Keeps a multi-account credential store (one active account per provider),
- * mirrors the active OpenAI Codex credential for `dsh-codex-subscription`, and
- * exposes an `/api` RPC surface (`provider/*`) that the GUI dropdown (browser
- * client half) calls to list, switch, add, and remove accounts. Reuses pi-ai's
- * OAuth and the DSH `credentials` and `settings` services; only the
- * multi-account store and the RPC dispatch are new.
+ * mirrors the active OpenAI Codex account for `dsh-codex-subscription` (legacy
+ * OAuth reference *and*, for 1.13+, the account vault record the running
+ * route resolves per request), and exposes an `/api` RPC surface
+ * (`provider/*`) that the GUI dropdown (browser client half) calls to list,
+ * switch, add, and remove accounts. Reuses pi-ai's OAuth and the DSH
+ * `credentials` and `settings` services; only the multi-account store and the
+ * RPC dispatch are new.
  *
  * @module @tsuuanmi/provider
  */

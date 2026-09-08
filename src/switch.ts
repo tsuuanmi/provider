@@ -1,18 +1,21 @@
 /**
  * Shared active-account switching logic, used by both the RPC service and any
  * future surface. Sets the provider's active account in the store, writes
- * `llm-pi-ai` profile API keys into their DSH credential slots, and mirrors the
- * active OpenAI Codex OAuth credential for `dsh-codex-subscription`.
+ * `llm-pi-ai` profile API keys into their DSH credential slots, and mirrors
+ * the active OpenAI Codex OAuth credential for `dsh-codex-subscription` —
+ * both its legacy string reference and (for 1.13+) its multi-account vault
+ * record, so the *running* Codex route switches accounts too.
  *
  * @module @tsuuanmi/provider/switch
  */
 import type { Context } from "@deepseek-ai/cordis";
 import { credentialRef } from "@deepseek-ai/dsh-credentials";
 import { AccountStore } from "./account-store.ts";
+import { syncCodexSubscriptionAccount } from "./codex-subscription.ts";
 import { AccountError } from "./invariant.ts";
 import { buildInventory, findAccountProvider } from "./providers.ts";
 
-const CODEX_PROVIDER_ID = "openai-codex";
+export const CODEX_PROVIDER_ID = "openai-codex";
 const CODEX_SUBSCRIPTION_OAUTH_REF = credentialRef("OPENAI_CODEX_SUBSCRIPTION_OAUTH");
 
 /** Make `accountId` the active account for `providerId` (persists + rewires). */
@@ -30,7 +33,13 @@ export async function switchActiveAccount(
 		await ctx.credentials.set(credentialRef(info.apiKeyEnv), credential.key);
 	}
 	if (providerId === CODEX_PROVIDER_ID && credential?.type === "oauth") {
+		// Legacy reference for `dsh-codex-subscription` < 1.13 (per-operation
+		// reads pick the change up without a restart) ...
 		await ctx.credentials.set(CODEX_SUBSCRIPTION_OAUTH_REF, JSON.stringify(credential));
+		// ... and the 1.13+ account vault, which the running route actually
+		// resolves per request. Without this half the host keeps serving the
+		// previously active account even though the reference changed.
+		await syncCodexSubscriptionAccount(ctx, credential, accountId);
 	}
 }
 
