@@ -14,8 +14,17 @@
  */
 import type { Context } from "@deepseek-ai/cordis";
 import type { Provider } from "@earendil-works/pi-ai";
-import { settingsNamespace } from "@deepseek-ai/dsh-settings";
+import type { SettingsNamespace } from "@deepseek-ai/dsh-settings";
 import { openaiCodexProvider } from "@earendil-works/pi-ai/providers/openai-codex";
+
+/**
+ * The `llm-pi-ai` settings namespace, as a literal branded string.
+ * `dsh-settings` removed its runtime `settingsNamespace()` helper in
+ * 0.1.2-rc.1, but `ctx.settings.get` accepts the same namespace string in
+ * every supported generation — and the type-only import keeps this module
+ * free of any runtime requirement on the removed helper's export.
+ */
+const LLM_PI_AI_NAMESPACE = "llm-pi-ai" as SettingsNamespace;
 
 /** One OAuth provider the plugin routes and can log into. */
 export interface ManagedOAuthProvider {
@@ -54,7 +63,7 @@ interface LlmProfile {
 
 /** Load the `llm-pi-ai` settings namespace value (empty when absent/unregistered). */
 function profileMap(ctx: Context): Map<string, LlmProfile> {
-	const providers = ctx.settings.get(settingsNamespace("llm-pi-ai")) as
+	const providers = ctx.settings.get(LLM_PI_AI_NAMESPACE) as
 		| { providers?: Record<string, LlmProfile> }
 		| undefined;
 	return new Map(Object.entries(providers?.providers ?? {}));
