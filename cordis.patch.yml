@@ -1,13 +1,17 @@
 # provider: GUI multi-account management dropdown.
 #
-# DSH v0.1.5-rc.1 scopes connection RPC registrations to the Context that
-# reads `ctx.connection`. Registering a custom channel therefore mounts the
-# route through that caller context's `webServer` service. The provider entry
-# must explicitly inject `webServer` before calling `connection.rpc.handle()`.
-# Keep the full runtime dependency set here so the loader waits for every
-# service the host half consumes before applying the plugin.
+# DSH currently mounts custom connection RPC channels from the connection
+# service's own Cordis context. Recent DSH builds access `ctx.webServer` from
+# that context without declaring it, so `connection.rpc.handle()` throws
+# `cannot get property "webServer" without inject` when this plugin registers
+# `/provider`. Extend the existing Web connection row's loader-level injects so
+# its fiber may access the web server. Keep `webRuntime`: the Web bundle uses it
+# to resolve the connection config (notably trustedHosts).
+- id: connection
+  inject: [webRuntime, webServer]
+
+# Installs the plugin without changing the profile's default model or routes.
 - insert:
     - id: provider
       name: '@tsuuanmi/provider'
-      inject: [connection, credentials, settings, webServer]
       config: {}

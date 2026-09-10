@@ -18,7 +18,7 @@ import { registerAccountRpc } from "./account-rpc.ts";
 import { CodeRegistry } from "./login.ts";
 
 export const name = "provider";
-export const inject = ["connection", "credentials", "settings", "webServer"];
+export const inject = ["connection", "credentials", "settings"];
 
 /** How often parked manual-code logins are reaped. */
 const CODE_REAP_INTERVAL_MS = 60_000;
