@@ -169,6 +169,75 @@ The build produces:
 - `lib/index.js` — host plugin bundle
 - `lib/client.js` — browser module-loader bundle
 
+## Testing in the `web` profile
+
+Never debug in the profile you use daily. The plugin tree is composed at boot,
+so a plugin whose entry fails to load — a wrong `inject`, a bad patch — takes
+the whole host down with a loader error instead of starting (the v0.1.5
+connection-fiber issue did exactly that). Use the disposable `web` profile as
+the test bed, and restore it afterwards.
+
+Build first — a linked checkout serves `lib/` straight from the working tree —
+then link the checkout into the profile and boot it on a free port:
+
+```sh
+pnpm build
+dsh plugin --profile web add /path/to/provider
+dsh --profile web --no-open --port 0
+```
+
+`--port 0` picks a free port, so a test boot never fights the daily profile for
+3080. A clean boot means the tree composed and the `/provider` channel mounted;
+a broken one crashes with a loader error naming the failing entry. To inspect
+the composed tree without booting — including the loader-level effects of
+`cordis.patch.yml`, such as the connection row's `inject:` list:
+
+```sh
+dsh --profile web --dump-config
+```
+
+The channel can also be probed headlessly: open the boot banner's URL once to
+receive the browser cookie, then POST a client-request envelope to the channel
+(read-only `list` is safe):
+
+```sh
+curl -s -c /tmp/dsh-cookies "http://127.0.0.1:<port>/?token=<token>" -o /dev/null
+curl -s -b /tmp/dsh-cookies -X POST "http://127.0.0.1:<port>/provider/list" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"client-request","rpcId":"t1","method":"list","payload":{}}'
+```
+
+Account state is shared per DSH home: every profile in `$DSH_HOME` reads the
+same `accounts.json`, so switching accounts in a test boot switches them for
+the daily profile too. To keep real accounts untouched, boot inside a scratch
+home instead — a fresh `web` profile is created there on first use, and the
+whole experiment is undone with one `rm -rf`:
+
+```sh
+DSH_HOME=/tmp/provider-debug dsh plugin --profile web add /path/to/provider
+DSH_HOME=/tmp/provider-debug dsh --profile web --no-open --port 0
+rm -rf /tmp/provider-debug
+```
+
+### Restoring the `web` profile after debugging
+
+Remove the plugin so the profile is exactly what it was before. `dsh plugin`
+reconciles the bundle list from the installed state, so the dependency and its
+`dsh.profile.bundles` row are dropped together:
+
+```sh
+dsh plugin --profile web remove @tsuuanmi/provider
+```
+
+Verify the profile is back to stock — `--dump-config` shows no
+`patched by @tsuuanmi/provider` sections, and the profile manifest no longer
+lists the dependency:
+
+```sh
+dsh --profile web --dump-config
+cat "$DSH_HOME/profiles/web/package.json"
+```
+
 ## License
 
 Apache-2.0
