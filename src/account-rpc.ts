@@ -197,7 +197,7 @@ export function registerAccountRpc(
 					if (providerId === CODEX_PROVIDER_ID && credential?.type === "oauth") {
 						// The removed account's grant must not survive in the
 						// Codex subscription vault the running route reads from.
-						await removeCodexSubscriptionAccount(ctx, credential);
+						await removeCodexSubscriptionAccount(ctx, credential, accountId);
 						const active = await store.getActive(providerId);
 						if (active !== undefined) {
 							// The provider still has an active account: keep the

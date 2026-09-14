@@ -34,7 +34,7 @@
  *
  * @module @tsuuanmi/provider/codex-subscription
  */
-import { randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import type { Context } from "@deepseek-ai/cordis";
 import type { Credential } from "@earendil-works/pi-ai";
 
@@ -186,20 +186,48 @@ function chatgptAccountId(credential: Credential): string | undefined {
 	return typeof id === "string" && id.length > 0 ? id : undefined;
 }
 
+/** Prefix separating provider-managed account ids from native random ids. */
+const MANAGED_VAULT_ID_PREFIX = "provider:";
+
+/** Stable vault identity for one named provider account. */
+function vaultAccountId(providerAccountId: string): string {
+	return `${MANAGED_VAULT_ID_PREFIX}${createHash("sha256").update(providerAccountId).digest("hex")}`;
+}
+
+/** Native vault labels used before this plugin associated labels with named accounts. */
+function isLegacyVaultLabel(label: string): boolean {
+	return /^Account \d+$/u.test(label);
+}
+
 /**
- * Find the vault account identifying the same ChatGPT account as `credential`.
- * An exact access-token match wins; otherwise accounts sharing the ChatGPT
- * `accountId` match (the vault's copy may hold a fresher, rotated token for
- * the very account being selected).
+ * Find the vault account belonging to one named provider account.
+ *
+ * Provider-managed records use a deterministic vault id, which survives token
+ * rotation and distinguishes named credentials sharing a ChatGPT `accountId`.
+ * Legacy random-id entries are adopted only by an exact token, matching label,
+ * or one unambiguous generic `Account N` entry for the same ChatGPT identity.
  */
-function matchVaultAccount(accounts: readonly VaultAccount[], credential: Credential): VaultAccount | undefined {
+function matchVaultAccount(
+	accounts: readonly VaultAccount[],
+	credential: Credential,
+	providerAccountId: string,
+): VaultAccount | undefined {
 	if (credential.type !== "oauth") return undefined;
+	const id = vaultAccountId(providerAccountId);
+	const managed = accounts.find((account) => account.id === id);
+	if (managed !== undefined) return managed;
+	const label = vaultLabel(providerAccountId);
+	const named = accounts.find((account) => account.label === label);
+	if (named !== undefined) return named;
 	for (const account of accounts) {
 		if (account.credential.access === credential.access) return account;
 	}
 	const accountId = chatgptAccountId(credential);
 	if (accountId === undefined) return undefined;
-	return accounts.find((account) => account.credential.accountId === accountId);
+	const legacyMatches = accounts.filter(
+		(account) => account.credential.accountId === accountId && isLegacyVaultLabel(account.label),
+	);
+	return legacyMatches.length === 1 ? legacyMatches[0] : undefined;
 }
 
 function grantRecord(payload: VaultPayload): GrantRecord {
@@ -226,15 +254,16 @@ export async function syncCodexSubscriptionAccount(
 	if (records === undefined) return;
 	let skipped: SkipReason | undefined;
 	await records.modifyRecord(CODEX_VAULT_KEY, async (current) => {
+		const id = vaultAccountId(label);
+		const normalizedLabel = vaultLabel(label);
 		if (current === undefined) {
 			// No vault yet: seed one holding this account, mirroring how the
 			// Codex plugin itself imports the legacy reference on first read.
-			const id = randomUUID();
 			return grantRecord({
 				version: VAULT_VERSION,
 				activeId: id,
 				legacyAccountId: id,
-				accounts: [{ id, label: vaultLabel(label), credential }],
+				accounts: [{ id, label: normalizedLabel, credential }],
 			});
 		}
 		const record = parseVaultRecord(current);
@@ -242,14 +271,20 @@ export async function syncCodexSubscriptionAccount(
 			skipped = record.reason;
 			return undefined; // leave a record we do not fully understand untouched
 		}
-		const match = matchVaultAccount(record.payload.accounts, credential);
-		if (match !== undefined && record.payload.activeId === match.id) return undefined; // already active
-		const activeId = match?.id ?? randomUUID();
+		const match = matchVaultAccount(record.payload.accounts, credential, label);
+		if (match?.id === id && record.payload.activeId === id) return undefined; // already active
 		const accounts =
-			match !== undefined
-				? record.payload.accounts // never clobber a stored (possibly rotated) token
-				: [...record.payload.accounts, { id: activeId, label: vaultLabel(label), credential }];
-		return grantRecord({ ...record.payload, activeId, accounts });
+			match === undefined
+				? [...record.payload.accounts, { id, label: normalizedLabel, credential }]
+				: record.payload.accounts.map((account) =>
+					account.id === match.id ? { ...account, id, label: normalizedLabel } : account,
+				);
+		return grantRecord({
+			...record.payload,
+			activeId: id,
+			legacyAccountId: record.payload.legacyAccountId === match?.id ? id : record.payload.legacyAccountId,
+			accounts,
+		});
 	});
 	if (skipped !== undefined) {
 		warnSkipped(ctx, skipped, "select the active Codex account at runtime");
@@ -264,7 +299,11 @@ export async function syncCodexSubscriptionAccount(
  * plugin's own removal behaves the same way). Removing the last vault account
  * deletes the whole record — the vault cannot be empty.
  */
-export async function removeCodexSubscriptionAccount(ctx: Context, credential: Credential): Promise<void> {
+export async function removeCodexSubscriptionAccount(
+	ctx: Context,
+	credential: Credential,
+	providerAccountId: string,
+): Promise<void> {
 	if (credential.type !== "oauth" || !isOAuthCredentialShape(credential)) return;
 	const records = recordsApi(ctx);
 	if (records === undefined) return;
@@ -277,7 +316,7 @@ export async function removeCodexSubscriptionAccount(ctx: Context, credential: C
 			skipped = record.reason;
 			return undefined;
 		}
-		const match = matchVaultAccount(record.payload.accounts, credential);
+		const match = matchVaultAccount(record.payload.accounts, credential, providerAccountId);
 		if (match === undefined) return undefined; // the vault never held this account
 		const accounts = record.payload.accounts.filter((account) => account.id !== match.id);
 		if (accounts.length === 0) {

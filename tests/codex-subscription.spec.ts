@@ -116,7 +116,7 @@ describe("syncCodexSubscriptionAccount", () => {
 		});
 		await syncCodexSubscriptionAccount(ctx, rotated, "codex-a");
 		const vault = vaultOf(store);
-		expect(vault.activeId).toBe("vault-1");
+		expect(vault.activeId).toBe(vault.account(0).id);
 		expect(vault.accounts).toHaveLength(2);
 		expect(vault.account(0).credential.access).toBe("access-a"); // stale copy kept, not overwritten
 	});
@@ -138,7 +138,7 @@ describe("syncCodexSubscriptionAccount", () => {
 		});
 		await syncCodexSubscriptionAccount(ctx, stale, "codex-a");
 		const vault = vaultOf(store);
-		expect(vault.activeId).toBe("vault-1");
+		expect(vault.activeId).toBe(vault.account(0).id);
 		expect(vault.account(0).credential.access).toBe("access-a"); // fresh vault copy preserved
 	});
 
@@ -163,17 +163,33 @@ describe("syncCodexSubscriptionAccount", () => {
 		expect(vault.activeId).toBe(imported.id);
 	});
 
-	it("does not rewrite the record when the matching account is already active", async () => {
-		const { store, ctx } = makeHarness({
-			[VAULT_KEY]: {
-				kind: "grant",
-				payload: {
-					version: 1,
-					activeId: "vault-1",
-					accounts: [{ id: "vault-1", label: "Account 1", credential: oauth() as Record<string, unknown> }],
-				},
-			},
-		});
+	it("keeps separately named credentials sharing one ChatGPT account id", async () => {
+		const { store, ctx } = makeHarness();
+		const educationOne = oauth({ access: "education-one", refresh: "education-one-refresh", accountId: "shared-education" });
+		const educationTwo = oauth({ access: "education-two", refresh: "education-two-refresh", accountId: "shared-education" });
+
+		await syncCodexSubscriptionAccount(ctx, educationOne, "chatgpt-education-1");
+		await syncCodexSubscriptionAccount(ctx, educationTwo, "chatgpt-education-2");
+		const vault = vaultOf(store);
+		expect(vault.accounts).toHaveLength(2);
+		expect(vault.accounts.map((account) => account.label)).toEqual(["chatgpt-education-1", "chatgpt-education-2"]);
+		expect(vault.account(1).credential.access).toBe("education-two");
+		expect(vault.activeId).toBe(vault.account(1).id);
+
+		await syncCodexSubscriptionAccount(
+			ctx,
+			oauth({ access: "education-one-rotated", refresh: "education-one-refresh-rotated", accountId: "shared-education" }),
+			"chatgpt-education-1",
+		);
+		const afterRotation = vaultOf(store);
+		expect(afterRotation.accounts).toHaveLength(2);
+		expect(afterRotation.activeId).toBe(afterRotation.account(0).id);
+		expect(afterRotation.account(0).credential.access).toBe("education-one");
+	});
+
+	it("does not rewrite a managed record when the matching account is already active", async () => {
+		const { store, ctx } = makeHarness();
+		await syncCodexSubscriptionAccount(ctx, oauth(), "codex-a");
 		const before = JSON.stringify(store[VAULT_KEY]);
 		await syncCodexSubscriptionAccount(ctx, oauth(), "codex-a");
 		expect(JSON.stringify(store[VAULT_KEY])).toBe(before);
@@ -236,7 +252,7 @@ describe("removeCodexSubscriptionAccount", () => {
 				},
 			},
 		});
-		await removeCodexSubscriptionAccount(ctx, oauth());
+		await removeCodexSubscriptionAccount(ctx, oauth(), "codex-a");
 		const vault = vaultOf(store);
 		expect(vault.accounts).toHaveLength(1);
 		expect(vault.account(0).id).toBe("vault-2");
@@ -258,7 +274,11 @@ describe("removeCodexSubscriptionAccount", () => {
 				},
 			},
 		});
-		await removeCodexSubscriptionAccount(ctx, oauth({ access: "access-b", refresh: "refresh-b", accountId: "chatgpt-account-b" }));
+		await removeCodexSubscriptionAccount(
+			ctx,
+			oauth({ access: "access-b", refresh: "refresh-b", accountId: "chatgpt-account-b" }),
+			"codex-b",
+		);
 		const vault = vaultOf(store);
 		expect(vault.accounts).toHaveLength(1);
 		expect(vault.activeId).toBe("vault-1");
@@ -275,8 +295,21 @@ describe("removeCodexSubscriptionAccount", () => {
 				},
 			},
 		});
-		await removeCodexSubscriptionAccount(ctx, oauth());
+		await removeCodexSubscriptionAccount(ctx, oauth(), "codex-a");
 		expect(store[VAULT_KEY]).toBeUndefined();
+	});
+
+	it("removes only the named account when two credentials share a ChatGPT account id", async () => {
+		const first = oauth({ access: "education-one", refresh: "education-one-refresh", accountId: "shared-education" });
+		const second = oauth({ access: "education-two", refresh: "education-two-refresh", accountId: "shared-education" });
+		const { store, ctx } = makeHarness();
+		await syncCodexSubscriptionAccount(ctx, first, "chatgpt-education-1");
+		await syncCodexSubscriptionAccount(ctx, second, "chatgpt-education-2");
+
+		await removeCodexSubscriptionAccount(ctx, second, "chatgpt-education-2");
+		const vault = vaultOf(store);
+		expect(vault.accounts).toHaveLength(1);
+		expect(vault.account(0).label).toBe("chatgpt-education-1");
 	});
 
 	it("matches by ChatGPT account id when the vault copy was rotated", async () => {
@@ -292,7 +325,7 @@ describe("removeCodexSubscriptionAccount", () => {
 				},
 			},
 		});
-		await removeCodexSubscriptionAccount(ctx, oauth({ access: "access-a-stale-copy" }));
+		await removeCodexSubscriptionAccount(ctx, oauth({ access: "access-a-stale-copy" }), "Account 1");
 		expect(store[VAULT_KEY]).toBeUndefined();
 	});
 
@@ -307,16 +340,20 @@ describe("removeCodexSubscriptionAccount", () => {
 				},
 			},
 		});
-		await removeCodexSubscriptionAccount(ctx, oauth({ access: "access-z", refresh: "refresh-z", accountId: "chatgpt-account-z" }));
+		await removeCodexSubscriptionAccount(
+			ctx,
+			oauth({ access: "access-z", refresh: "refresh-z", accountId: "chatgpt-account-z" }),
+			"codex-z",
+		);
 		expect(vaultOf(store).accounts).toHaveLength(1);
 
 		const empty = makeHarness();
-		await expect(removeCodexSubscriptionAccount(empty.ctx, oauth())).resolves.toBeUndefined();
+		await expect(removeCodexSubscriptionAccount(empty.ctx, oauth(), "codex-a")).resolves.toBeUndefined();
 		expect(empty.store[VAULT_KEY]).toBeUndefined();
 	});
 
 	it("is a no-op when the credentials service has no records API", async () => {
 		const ctx = { credentials: { set: vi.fn(), unset: vi.fn() }, logger: { warn: vi.fn() } } as unknown as Context;
-		await expect(removeCodexSubscriptionAccount(ctx, oauth())).resolves.toBeUndefined();
+		await expect(removeCodexSubscriptionAccount(ctx, oauth(), "codex-a")).resolves.toBeUndefined();
 	});
 });
